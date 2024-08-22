@@ -25,7 +25,7 @@ In this document we describe how to use Corim Command Line Interface tool `cocli
 
 To install the `cocli` command, do:
 ```
-$ go install github.com/veraison/corim/cocli@latest
+$ go install github.com/veraison/cocli@latest
 ```
 
 To configure auto-completion, use the `completion` subcommand.  For example, if
