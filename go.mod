@@ -43,7 +43,7 @@ require (
 	github.com/veraison/eat v0.0.0-20210331113810-3da8a4dd42ff // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/crypto v0.26.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/text v0.17.0 // indirect
