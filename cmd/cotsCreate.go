@@ -135,7 +135,7 @@ func checkctsCreateCtsArgs() error {
 		return errors.New("no environment template supplied")
 	}
 
-	if (*cotsCreateTagUUID != false && *cotsCreateTagID != "") || (*cotsCreateTagUUID != false && *cotsCreateTagUUIDStr != "") || (*cotsCreateTagUUIDStr != "" && *cotsCreateTagID != "") {
+	if (*cotsCreateTagUUID && *cotsCreateTagID != "") || (*cotsCreateTagUUID && *cotsCreateTagUUIDStr != "") || (*cotsCreateTagUUIDStr != "" && *cotsCreateTagID != "") {
 		return errors.New("only one of --uuid, --uuid-str and --id can be used at the same time")
 	}
 
@@ -181,7 +181,7 @@ func ctsTemplateToCBOR(language string, tagID string, genUUID bool, uuidStr stri
 
 	if tagID != "" {
 		cts.SetTagIdentity(tagID, version)
-	} else if genUUID != false {
+	} else if genUUID {
 		u := uuid.New()
 		b, _ := u.MarshalBinary()
 		cts.SetTagIdentity(b, version)
