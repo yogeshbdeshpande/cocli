@@ -33,14 +33,13 @@ endif
 
 COVER_THRESHOLD := $(shell grep '^name: cover' .github/workflows/ci-go-cover.yml | cut -c13-)
 
-
 define MOCK_template
-mock_$(1): $(1)
-	$$(MOCKGEN) -source=$$< -destination=cmd/mocks/$$$$(basename $$@) -package=$$(MOCKPKG)
+cmd/mocks/$(notdir $(1)): $(1)
+	$$(MOCKGEN) -source=$$< -destination=$$@ -package=$$(MOCKPKG)
 endef
 
 $(foreach m,$(INTERFACES),$(eval $(call MOCK_template,$(m))))
-MOCK_FILES := $(foreach m,$(INTERFACES),$(join mock_,$(m)))
+MOCK_FILES := $(foreach m,$(INTERFACES),$(join cmd/mocks/,$(notdir $(m))))
 CLEANFILES := $(MOCK_FILES)
 
 _mocks: $(MOCK_FILES)
@@ -51,6 +50,8 @@ test test-cover: _mocks; go test $(GOTEST_ARGS)
 
 realtest: _mocks; go test $(GOTEST_ARGS)
 .PHONY: realtest
+
+CLEANFILES += cmd/output.cbor
 
 .PHONY: clean
 clean: ; $(RM) $(CLEANFILES)
@@ -78,3 +79,4 @@ help:
 	@echo "  * presubmit:  check you are ready to push your local branch to remote"
 	@echo "  * help:       print this menu"
 	@echo "  * licenses:   check licenses of dependent packages"
+	@echo "  * clean:      remove auto-generated files"
