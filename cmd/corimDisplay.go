@@ -75,17 +75,12 @@ func displaySignedCorim(s corim.SignedCorim, corimFile string, showTags bool) er
 		return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
 	}
 
-	fmt.Println("Corim:")
+	fmt.Println("CoRIM:")
 	fmt.Println(string(corimJSON))
 
 	if showTags {
 		fmt.Println("Tags:")
-		// convert []corim.Tag to [][]byte
-		tags := make([][]byte, len(s.UnsignedCorim.Tags))
-		for i, tag := range s.UnsignedCorim.Tags {
-			tags[i] = tag
-		}
-		displayTags(tags)
+		displayTags(s.UnsignedCorim.Tags)
 	}
 
 	return nil
@@ -102,12 +97,7 @@ func displayUnsignedCorim(u corim.UnsignedCorim, corimFile string, showTags bool
 
 	if showTags {
 		fmt.Println("Tags:")
-		// convert []corim.Tag to [][]byte
-		tags := make([][]byte, len(u.Tags))
-		for i, tag := range u.Tags {
-			tags[i] = tag
-		}
-		displayTags(tags)
+		displayTags(u.Tags)
 	}
 
 	return nil
@@ -141,17 +131,16 @@ func display(corimFile string, showTags bool) error {
 	return displayUnsignedCorim(u, corimFile, showTags)
 }
 
-// displayTags processes and displays embedded tags within a CoRIM
-func displayTags(tags [][]byte) {
-	for i, e := range tags {
-		// ensure the tag has at least 4 bytes (3 for tag identifier and 1 for data)
-		if len(e) < 4 {
+// displayTags processes and displays embedded tags within a CoRIM.
+func displayTags(tags []corim.Tag) {
+	for i, t := range tags {
+		if len(t) < 4 {
 			fmt.Printf(">> skipping malformed tag at index %d\n", i)
 			continue
 		}
 
 		// Split tag identifier from data
-		cborTag, cborData := e[:3], e[3:]
+		cborTag, cborData := t[:3], t[3:]
 
 		hdr := fmt.Sprintf(">> [ %d ]", i)
 
