@@ -61,57 +61,37 @@ func checkCorimDisplayArgs() error {
 	return nil
 }
 
-func display(corimFile string, showTags bool) error {
-	var (
-		corimCBOR []byte
-		err       error
-	)
-
-	// read the CoRIM file
-	if corimCBOR, err = afero.ReadFile(fs, corimFile); err != nil {
-		return fmt.Errorf("error loading CoRIM from %s: %w", corimFile, err)
+func displaySignedCorim(s corim.SignedCorim, corimFile string, showTags bool) error {
+	metaJSON, err := json.MarshalIndent(&s.Meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error encoding CoRIM Meta from %s: %w", corimFile, err)
 	}
 
-	// try to decode as a signed CoRIM
-	var s corim.SignedCorim
-	if err = s.FromCOSE(corimCBOR); err == nil {
-		// successfully decoded as signed CoRIM
-		metaJSON, err := json.MarshalIndent(&s.Meta, "", "  ")
-		if err != nil {
-			return fmt.Errorf("error encoding CoRIM Meta from %s: %w", corimFile, err)
-		}
+	fmt.Println("Meta:")
+	fmt.Println(string(metaJSON))
 
-		fmt.Println("Meta:")
-		fmt.Println(string(metaJSON))
-
-		corimJSON, err := json.MarshalIndent(&s.UnsignedCorim, "", "  ")
-		if err != nil {
-			return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
-		}
-
-		fmt.Println("Corim:")
-		fmt.Println(string(corimJSON))
-
-		if showTags {
-			fmt.Println("Tags:")
-			// convert []corim.Tag to [][]byte
-			tags := make([][]byte, len(s.UnsignedCorim.Tags))
-			for i, tag := range s.UnsignedCorim.Tags {
-				tags[i] = tag
-			}
-			displayTags(tags)
-		}
-
-		return nil
+	corimJSON, err := json.MarshalIndent(&s.UnsignedCorim, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
 	}
 
-	// if decoding as signed CoRIM failed, attempt to decode as unsigned CoRIM
-	var u corim.UnsignedCorim
-	if err = u.FromCBOR(corimCBOR); err != nil {
-		return fmt.Errorf("error decoding CoRIM (signed or unsigned) from %s: %w", corimFile, err)
+	fmt.Println("Corim:")
+	fmt.Println(string(corimJSON))
+
+	if showTags {
+		fmt.Println("Tags:")
+		// convert []corim.Tag to [][]byte
+		tags := make([][]byte, len(s.UnsignedCorim.Tags))
+		for i, tag := range s.UnsignedCorim.Tags {
+			tags[i] = tag
+		}
+		displayTags(tags)
 	}
 
-	// successfully decoded as unsigned CoRIM
+	return nil
+}
+
+func displayUnsignedCorim(u corim.UnsignedCorim, corimFile string, showTags bool) error {
 	corimJSON, err := json.MarshalIndent(&u, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
@@ -131,6 +111,34 @@ func display(corimFile string, showTags bool) error {
 	}
 
 	return nil
+}
+
+func display(corimFile string, showTags bool) error {
+	var (
+		corimCBOR []byte
+		err       error
+	)
+
+	// read the CoRIM file
+	if corimCBOR, err = afero.ReadFile(fs, corimFile); err != nil {
+		return fmt.Errorf("error loading CoRIM from %s: %w", corimFile, err)
+	}
+
+	// try to decode as a signed CoRIM
+	var s corim.SignedCorim
+	if err = s.FromCOSE(corimCBOR); err == nil {
+		// successfully decoded as signed CoRIM
+		return displaySignedCorim(s, corimFile, showTags)
+	}
+
+	// if decoding as signed CoRIM failed, attempt to decode as unsigned CoRIM
+	var u corim.UnsignedCorim
+	if err = u.FromCBOR(corimCBOR); err != nil {
+		return fmt.Errorf("error decoding CoRIM (signed or unsigned) from %s: %w", corimFile, err)
+	}
+
+	// successfully decoded as unsigned CoRIM
+	return displayUnsignedCorim(u, corimFile, showTags)
 }
 
 // displayTags processes and displays embedded tags within a CoRIM
