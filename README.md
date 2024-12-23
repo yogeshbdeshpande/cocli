@@ -33,7 +33,7 @@ $ cocli completion bash > ~/.bash_completion.d/cocli
 $ . ~/.bash_completion
 ```
 
-If you are setting up in Windows Bash, you can use:
+If you are using Git Bash or a similar environment, you would do something like:
 ```
 $ mkdir -p ~/.local/share/bash-completion/completions
 $ cocli completion bash > ~/.local/share/bash-completion/completions/cocli
