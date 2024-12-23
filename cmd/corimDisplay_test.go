@@ -11,6 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Define your truncated CBOR payload
+var truncatedCorim = []byte{
+	0xA1,               // CBOR map with 1 key
+	0x01,               // Key = 1
+	0x65,               // Value: string of length 5
+	'h', 'e', 'l', 'l', // Incomplete string value (missing one byte)
+}
+
 func Test_CorimDisplayCmd_unknown_argument(t *testing.T) {
 	cmd := NewCorimDisplayCmd()
 
@@ -44,7 +52,7 @@ func Test_CorimDisplayCmd_non_existent_corim_file(t *testing.T) {
 	fs = afero.NewMemMapFs()
 
 	err := cmd.Execute()
-	assert.EqualError(t, err, "error loading signed CoRIM from nonexistent.cbor: open nonexistent.cbor: file does not exist")
+	assert.EqualError(t, err, "error loading CoRIM from nonexistent.cbor: open nonexistent.cbor: file does not exist")
 }
 
 func Test_CorimDisplayCmd_bad_signed_corim(t *testing.T) {
@@ -60,23 +68,28 @@ func Test_CorimDisplayCmd_bad_signed_corim(t *testing.T) {
 	require.NoError(t, err)
 
 	err = cmd.Execute()
-	assert.EqualError(t, err, "error decoding signed CoRIM from bad.txt: failed CBOR decoding for COSE-Sign1 signed CoRIM: cbor: invalid COSE_Sign1_Tagged object")
+	assert.EqualError(t, err, "error decoding CoRIM (signed or unsigned) from bad.txt: expected map (CBOR Major Type 5), found Major Type 3")
 }
 
-func Test_CorimDisplayCmd_invalid_signed_corim(t *testing.T) {
+func Test_CorimDisplayCmd_invalid_signed_corim_Truncated(t *testing.T) {
 	cmd := NewCorimDisplayCmd()
 
 	args := []string{
-		"--file=invalid.cbor",
+		"--file=truncated.cbor",
 	}
 	cmd.SetArgs(args)
 
 	fs = afero.NewMemMapFs()
-	err := afero.WriteFile(fs, "invalid.cbor", testSignedCorimInvalid, 0644)
+	// Use truncatedCorim to force "unexpected EOF" error
+	err := afero.WriteFile(fs, "truncated.cbor", truncatedCorim, 0644)
 	require.NoError(t, err)
 
 	err = cmd.Execute()
-	assert.EqualError(t, err, `error decoding signed CoRIM from invalid.cbor: failed CBOR decoding of unsigned CoRIM: unexpected EOF`)
+	assert.EqualError(
+		t,
+		err,
+		"error decoding CoRIM (signed or unsigned) from truncated.cbor: map item 0: could not unmarshal value: unexpected EOF",
+	)
 }
 
 func Test_CorimDisplayCmd_ok_top_level_view(t *testing.T) {
