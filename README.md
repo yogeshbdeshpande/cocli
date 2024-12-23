@@ -27,12 +27,17 @@ To install the `cocli` command, do:
 ```
 $ go install github.com/veraison/cocli@latest
 ```
-
-To configure auto-completion, use the `completion` subcommand.  For example, if
-`bash` is your shell, you would do something like:
+To configure auto-completion, use the `completion` subcommand. For example, if `bash` is your shell, you would do something like:
 ```
 $ cocli completion bash > ~/.bash_completion.d/cocli
 $ . ~/.bash_completion
+```
+
+If you are using Git Bash or a similar environment, you would do something like:
+```
+$ mkdir -p ~/.local/share/bash-completion/completions
+$ cocli completion bash > ~/.local/share/bash-completion/completions/cocli
+$ source ~/.local/share/bash-completion/completions/cocli
 ```
 to get automatic command completion and suggestions using the TAB key.
 
@@ -231,7 +236,7 @@ Use the `cots create` subcommand to create a CBOR-encoded CoTS. The `environment
 
 
 ```
-$ cocli cots create --environment data/cots/env/vendor.json --tafile data/cots/shared_ta.ta
+$ cocli cots create --environment data/cots/templates/env/vendor.json --tafile data/cots/shared_ta.ta
 ```
 On success, you should see something like the following printed to stdout:
 ```
@@ -242,7 +247,7 @@ The CBOR-encoded CoTS file is stored in the current working directory with a
 name derived from its environment template.  If you want, you can specify a different
 target directory and file name using the `--output` command line switch (abbrev. `-o`)
 ```
-$ cocli cots create --environment data/cots/env/vendor.json --tafile data/cots/shared_ta.ta --output /tmp/myCots.cbor
+$ cocli cots create --environment data/cots/templates/env/vendor.json --tafile data/cots/shared_ta.ta --output /tmp/myCots.cbor
 >> created "/tmp/myCots.cbor"
 ```
 Note that the output directory, as well as all its parent directories, MUST pre-exist.
