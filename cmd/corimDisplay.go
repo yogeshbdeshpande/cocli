@@ -47,7 +47,7 @@ func NewCorimDisplayCmd() *cobra.Command {
 		},
 	}
 
-	corimDisplayCorimFile = cmd.Flags().StringP("file", "f", "", "a signed CoRIM file (in CBOR format)")
+	corimDisplayCorimFile = cmd.Flags().StringP("file", "f", "", "a CoRIM file (in CBOR format)")
 	corimDisplayShowTags = cmd.Flags().BoolP("show-tags", "v", false, "display embedded tags")
 
 	return cmd
@@ -61,32 +61,35 @@ func checkCorimDisplayArgs() error {
 	return nil
 }
 
-func display(signedCorimFile string, showTags bool) error {
-	var (
-		signedCorimCBOR []byte
-		metaJSON        []byte
-		corimJSON       []byte
-		err             error
-		s               corim.SignedCorim
-	)
-
-	if signedCorimCBOR, err = afero.ReadFile(fs, signedCorimFile); err != nil {
-		return fmt.Errorf("error loading signed CoRIM from %s: %w", signedCorimFile, err)
-	}
-
-	if err = s.FromCOSE(signedCorimCBOR); err != nil {
-		return fmt.Errorf("error decoding signed CoRIM from %s: %w", signedCorimFile, err)
-	}
-
-	if metaJSON, err = json.MarshalIndent(&s.Meta, "", "  "); err != nil {
-		return fmt.Errorf("error decoding CoRIM Meta from %s: %w", signedCorimFile, err)
+func displaySignedCorim(s corim.SignedCorim, corimFile string, showTags bool) error {
+	metaJSON, err := json.MarshalIndent(&s.Meta, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error encoding CoRIM Meta from %s: %w", corimFile, err)
 	}
 
 	fmt.Println("Meta:")
 	fmt.Println(string(metaJSON))
 
-	if corimJSON, err = json.MarshalIndent(&s.UnsignedCorim, "", "  "); err != nil {
-		return fmt.Errorf("error decoding unsigned CoRIM from %s: %w", signedCorimFile, err)
+	corimJSON, err := json.MarshalIndent(&s.UnsignedCorim, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
+	}
+
+	fmt.Println("CoRIM:")
+	fmt.Println(string(corimJSON))
+
+	if showTags {
+		fmt.Println("Tags:")
+		displayTags(s.UnsignedCorim.Tags)
+	}
+
+	return nil
+}
+
+func displayUnsignedCorim(u corim.UnsignedCorim, corimFile string, showTags bool) error {
+	corimJSON, err := json.MarshalIndent(&u, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error encoding unsigned CoRIM from %s: %w", corimFile, err)
 	}
 
 	fmt.Println("Corim:")
@@ -94,37 +97,70 @@ func display(signedCorimFile string, showTags bool) error {
 
 	if showTags {
 		fmt.Println("Tags:")
-		for i, e := range s.UnsignedCorim.Tags {
-			// need at least 3 bytes for the tag and 1 for the smallest bstr
-			if len(e) < 3+1 {
-				fmt.Printf(">> skipping malformed tag at index %d\n", i)
-				continue
-			}
-
-			// split tag from data
-			cborTag, cborData := e[:3], e[3:]
-
-			hdr := fmt.Sprintf(">> [ %d ]", i)
-
-			if bytes.Equal(cborTag, corim.ComidTag) {
-				if err = printComid(cborData, hdr); err != nil {
-					fmt.Printf(">> skipping malformed CoMID tag at index %d: %v\n", i, err)
-				}
-			} else if bytes.Equal(cborTag, corim.CoswidTag) {
-				if err = printCoswid(cborData, hdr); err != nil {
-					fmt.Printf(">> skipping malformed CoSWID tag at index %d: %v\n", i, err)
-				}
-			} else if bytes.Equal(cborTag, cots.CotsTag) {
-				if err = printCots(cborData, hdr); err != nil {
-					fmt.Printf(">> skipping malformed CoTS tag at index %d: %v\n", i, err)
-				}
-			} else {
-				fmt.Printf(">> unmatched CBOR tag: %x\n", cborTag)
-			}
-		}
+		displayTags(u.Tags)
 	}
 
 	return nil
+}
+
+func display(corimFile string, showTags bool) error {
+	var (
+		corimCBOR []byte
+		err       error
+	)
+
+	// read the CoRIM file
+	if corimCBOR, err = afero.ReadFile(fs, corimFile); err != nil {
+		return fmt.Errorf("error loading CoRIM from %s: %w", corimFile, err)
+	}
+
+	// try to decode as a signed CoRIM
+	var s corim.SignedCorim
+	if err = s.FromCOSE(corimCBOR); err == nil {
+		// successfully decoded as signed CoRIM
+		return displaySignedCorim(s, corimFile, showTags)
+	}
+
+	// if decoding as signed CoRIM failed, attempt to decode as unsigned CoRIM
+	var u corim.UnsignedCorim
+	if err = u.FromCBOR(corimCBOR); err != nil {
+		return fmt.Errorf("error decoding CoRIM (signed or unsigned) from %s: %w", corimFile, err)
+	}
+
+	// successfully decoded as unsigned CoRIM
+	return displayUnsignedCorim(u, corimFile, showTags)
+}
+
+// displayTags processes and displays embedded tags within a CoRIM.
+func displayTags(tags []corim.Tag) {
+	for i, t := range tags {
+		if len(t) < 4 {
+			fmt.Printf(">> skipping malformed tag at index %d\n", i)
+			continue
+		}
+
+		// Split tag identifier from data
+		cborTag, cborData := t[:3], t[3:]
+
+		hdr := fmt.Sprintf(">> [ %d ]", i)
+
+		switch {
+		case bytes.Equal(cborTag, corim.ComidTag):
+			if err := printComid(cborData, hdr); err != nil {
+				fmt.Printf(">> skipping malformed CoMID tag at index %d: %v\n", i, err)
+			}
+		case bytes.Equal(cborTag, corim.CoswidTag):
+			if err := printCoswid(cborData, hdr); err != nil {
+				fmt.Printf(">> skipping malformed CoSWID tag at index %d: %v\n", i, err)
+			}
+		case bytes.Equal(cborTag, cots.CotsTag):
+			if err := printCots(cborData, hdr); err != nil {
+				fmt.Printf(">> skipping malformed CoTS tag at index %d: %v\n", i, err)
+			}
+		default:
+			fmt.Printf(">> unmatched CBOR tag: %x\n", cborTag)
+		}
+	}
 }
 
 func init() {
