@@ -43,6 +43,12 @@ var (
 	//go:embed testcases/ec-p256.jwk
 	testECKey []byte
 
+	//go:embed testcases/test-certs/endEntity.der
+	testSigningCertificate []byte
+
+	//go:embed testcases/test-certs/intermediateCA.der
+	testIntermediateCerts []byte
+
 	//go:embed testcases/signed-corim-valid.cbor
 	testSignedCorimValid []byte
 

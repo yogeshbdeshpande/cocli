@@ -98,25 +98,26 @@ func extract(signedCorimFile string, outputDir *string) error {
 		// split tag from data
 		cborTag, cborData := e[:3], e[3:]
 
-		if bytes.Equal(cborTag, corim.ComidTag) {
+		switch {
+		case bytes.Equal(cborTag, corim.ComidTag):
 			outputFile = filepath.Join(baseDir, fmt.Sprintf("%06d-comid.cbor", i))
 
 			if err = afero.WriteFile(fs, outputFile, cborData, 0644); err != nil {
 				fmt.Printf(">> error saving CoMID tag at index %d: %v\n", i, err)
 			}
-		} else if bytes.Equal(cborTag, corim.CoswidTag) {
+		case bytes.Equal(cborTag, corim.CoswidTag):
 			outputFile = filepath.Join(baseDir, fmt.Sprintf("%06d-coswid.cbor", i))
 
 			if err = afero.WriteFile(fs, outputFile, cborData, 0644); err != nil {
 				fmt.Printf(">> error saving CoSWID tag at index %d: %v\n", i, err)
 			}
-		} else if bytes.Equal(cborTag, cots.CotsTag) {
+		case bytes.Equal(cborTag, cots.CotsTag):
 			outputFile = filepath.Join(baseDir, fmt.Sprintf("%06d-cots.cbor", i))
 
 			if err = afero.WriteFile(fs, outputFile, cborData, 0644); err != nil {
 				fmt.Printf(">> error saving CoTS tag at index %d: %v\n", i, err)
 			}
-		} else {
+		default:
 			fmt.Printf(">> unmatched CBOR tag: %x\n", cborTag)
 		}
 	}

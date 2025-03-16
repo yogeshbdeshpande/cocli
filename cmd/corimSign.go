@@ -14,10 +14,12 @@ import (
 )
 
 var (
-	corimSignCorimFile  *string
-	corimSignKeyFile    *string
-	corimSignOutputFile *string
-	corimSignMetaFile   *string
+	corimSignCorimFile         *string
+	corimSignKeyFile           *string
+	corimSignOutputFile        *string
+	corimSignMetaFile          *string
+	corimSignCertFile          *string
+	corimSignIntermediateCerts *string
 )
 
 var corimSignCmd = NewCorimSignCmd()
@@ -28,15 +30,24 @@ func NewCorimSignCmd() *cobra.Command {
 		Short: "create a signed CoRIM from an unsigned, CBOR-encoded CoRIM using the supplied key",
 		Long: `create a signed CoRIM from an unsigned, CBOR-encoded CoRIM using the supplied key
 
-	Sign the unsigned CoRIM unsigned-corim.cbor using the key in JWK format from
-	file key.jwk and save the resulting COSE Sign1 to signed-corim.cbor.  Read
-	the relevant CorimMeta information from file meta.json.
-	
-	  cocli corim sign  --file=unsigned-corim.cbor \
-					--key=key.jwk \
-					--meta=meta.json \
-					--output=signed-corim.cbor
-	`,
+    Sign the unsigned CoRIM unsigned-corim.cbor using the key in JWK format from
+    file key.jwk and save the resulting COSE Sign1 to signed-corim.cbor.  Read
+    the relevant CorimMeta information from file meta.json.
+    
+      cocli corim sign  --file=unsigned-corim.cbor \
+                    --key=key.jwk \
+                    --meta=meta.json \
+                    --output=signed-corim.cbor
+                    
+    Optionally include the signing certificate and certificate chain in the COSE header:
+    
+      cocli corim sign  --file=unsigned-corim.cbor \
+                    --key=key.jwk \
+                    --meta=meta.json \
+                    --cert=signing-cert.der \
+                    --intermediates=intermediate-certs.der \
+                    --output=signed-corim.cbor
+    `,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkCorimSignArgs(); err != nil {
@@ -45,7 +56,7 @@ func NewCorimSignCmd() *cobra.Command {
 
 			// checkCorimSignArgs makes sure corimSignCorimFile is not nil
 			coseFile, err := sign(*corimSignCorimFile, *corimSignKeyFile,
-				*corimSignMetaFile, corimSignOutputFile)
+				*corimSignMetaFile, corimSignOutputFile, corimSignCertFile, corimSignIntermediateCerts)
 			if err != nil {
 				return err
 			}
@@ -59,6 +70,8 @@ func NewCorimSignCmd() *cobra.Command {
 	corimSignMetaFile = cmd.Flags().StringP("meta", "m", "", "CoRIM Meta file (in JSON format)")
 	corimSignKeyFile = cmd.Flags().StringP("key", "k", "", "signing key in JWK format")
 	corimSignOutputFile = cmd.Flags().StringP("output", "o", "", "name of the generated COSE Sign1 file")
+	corimSignCertFile = cmd.Flags().StringP("cert", "c", "", "signing certificate in DER format")
+	corimSignIntermediateCerts = cmd.Flags().String("intermediates", "", "intermediate certificates in DER format")
 
 	return cmd
 }
@@ -79,12 +92,14 @@ func checkCorimSignArgs() error {
 	return nil
 }
 
-func sign(unsignedCorimFile, keyFile, metaFile string, outputFile *string) (string, error) {
+func sign(unsignedCorimFile, keyFile, metaFile string, outputFile, certFile, intermediatesFile *string) (string, error) {
 	var (
 		unsignedCorimCBOR []byte
 		signedCorimCBOR   []byte
 		metaJSON          []byte
 		keyJWK            []byte
+		certDER           []byte
+		intermediatesDER  []byte
 		err               error
 		signedCorimFile   string
 		c                 corim.UnsignedCorim
@@ -127,6 +142,33 @@ func sign(unsignedCorimFile, keyFile, metaFile string, outputFile *string) (stri
 	s := corim.SignedCorim{
 		UnsignedCorim: c,
 		Meta:          m,
+	}
+
+	// Add signing certificate if provided
+	if certFile != nil && *certFile != "" {
+		if certDER, err = afero.ReadFile(fs, *certFile); err != nil {
+			return "", fmt.Errorf("error loading signing certificate from %s: %w", *certFile, err)
+		}
+
+		if err = s.AddSigningCert(certDER); err != nil {
+			return "", fmt.Errorf("error adding signing certificate: %w", err)
+		}
+	}
+
+	// Add intermediate certificates if provided
+	if intermediatesFile != nil && *intermediatesFile != "" {
+		// Ensure signing certificate was provided
+		if certFile == nil || *certFile == "" {
+			return "", fmt.Errorf("cannot add intermediate certificates without a signing certificate")
+		}
+
+		if intermediatesDER, err = afero.ReadFile(fs, *intermediatesFile); err != nil {
+			return "", fmt.Errorf("error loading intermediate certificates from %s: %w", *intermediatesFile, err)
+		}
+
+		if err = s.AddIntermediateCerts(intermediatesDER); err != nil {
+			return "", fmt.Errorf("error adding intermediate certificates: %w", err)
+		}
 	}
 
 	signedCorimCBOR, err = s.Sign(signer)

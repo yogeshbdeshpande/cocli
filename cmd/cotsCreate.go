@@ -199,7 +199,7 @@ func ctsTemplateToCBOR(language string, tagID string, genUUID bool, uuidStr stri
 		if err = permClaims.FromJSON(permClaimsData); err != nil {
 			return "", fmt.Errorf("error decoding template from %s: %w", permClaimsFile, err)
 		}
-		cts.AddPermClaims(permClaims)
+		cts.AddPermClaims(&permClaims)
 	}
 	if exclClaimsFile != "" {
 		if exclClaimsData, err = afero.ReadFile(fs, exclClaimsFile); err != nil {
@@ -209,9 +209,9 @@ func ctsTemplateToCBOR(language string, tagID string, genUUID bool, uuidStr stri
 		if err = exclClaims.FromJSON(exclClaimsData); err != nil {
 			return "", fmt.Errorf("error decoding template from %s: %w", exclClaimsFile, err)
 		}
-		cts.AddExclClaims(exclClaims)
+		cts.AddExclClaims(&exclClaims)
 	}
-	if 0 != len(purposes) {
+	if len(purposes) > 0 {
 		cts.Purposes = purposes
 	}
 
@@ -227,13 +227,13 @@ func ctsTemplateToCBOR(language string, tagID string, genUUID bool, uuidStr stri
 		if err != nil {
 			return "", fmt.Errorf("error loading TA from %s: %w", taFile, err)
 		}
-		if ".der" == filepath.Ext(taFile) {
+		if filepath.Ext(taFile) == ".der" {
 			trustAnchor.Format = cots.TaFormatCertificate
 		}
-		if ".spki" == filepath.Ext(taFile) {
+		if filepath.Ext(taFile) == ".spki" {
 			trustAnchor.Format = cots.TaFormatSubjectPublicKeyInfo
 		}
-		if ".ta" == filepath.Ext(taFile) {
+		if filepath.Ext(taFile) == ".ta" {
 			trustAnchor.Format = cots.TaFormatTrustAnchorInfo
 		}
 		trustAnchor.Data = tadata
