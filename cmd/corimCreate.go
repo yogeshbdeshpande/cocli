@@ -157,7 +157,7 @@ func corimTemplateToCBOR(tmplFile string, comidFiles, coswidFiles, cotsFiles []s
 			return "", fmt.Errorf("error loading CoMID from %s: %w", comidFile, err)
 		}
 
-		if c.AddComid(m) == nil {
+		if c.AddComid(&m) == nil {
 			return "", fmt.Errorf(
 				"error adding CoMID from %s (check its validity using the %q sub-command)",
 				comidFile, "comid validate",
@@ -182,7 +182,7 @@ func corimTemplateToCBOR(tmplFile string, comidFiles, coswidFiles, cotsFiles []s
 			return "", fmt.Errorf("error loading CoSWID from %s: %w", coswidFile, err)
 		}
 
-		if c.AddCoswid(s) == nil {
+		if c.AddCoswid(&s) == nil {
 			return "", fmt.Errorf("error adding CoSWID from %s", coswidFile)
 		}
 	}
@@ -204,7 +204,7 @@ func corimTemplateToCBOR(tmplFile string, comidFiles, coswidFiles, cotsFiles []s
 			return "", fmt.Errorf("error loading CoTS from %s: %w", cotsFile, err)
 		}
 
-		if c.AddCots(t) == nil {
+		if c.AddCots(&t) == nil {
 			return "", fmt.Errorf("error adding CoTS from %s", cotsFile)
 		}
 	}
