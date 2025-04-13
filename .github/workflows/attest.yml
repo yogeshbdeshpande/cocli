@@ -46,7 +46,7 @@ jobs:
           grype dist/cocli -o json > dist/cocli.vuln.json || true
 
       - name: 📤 Upload SBOM and Vulnerability Scan
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.3.1
         with:
           name: attest-files
           path: dist/*.json
