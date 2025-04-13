@@ -28,7 +28,7 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          go build -o dist/cocli ./cocli
+          go build -o dist/cocli ./
 
       - name: 📦 Install Syft & Grype
         run: |
