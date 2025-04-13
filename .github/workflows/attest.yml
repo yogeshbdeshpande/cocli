@@ -52,14 +52,14 @@ jobs:
           path: dist/*.json
 
       - name: 🔐 Attest SBOM to Rekor
-        uses: github/actions/attest@v2
+        uses: actions/attest@v2
         with:
           subject-path: dist/cocli
           predicate-type: spdx
           predicate-path: dist/cocli.spdx.json
 
       - name: 🔐 Attest Vulnerabilities to Rekor
-        uses: github/actions/attest@v2
+        uses: actions/attest@v2
         with:
           subject-path: dist/cocli
           predicate-type: vuln
